@@ -1377,7 +1377,7 @@ function simSwipeEnd(e) {
   const answered = !!S.simAnswers[q?.questionId];
   // For scrollable questions: swipe-next requires answer first; swipe-prev always works
   if (dy < 0 && atBottom && (!isScrollable || answered)) simMove(1);
-  if (dy > 0 && atTop) simMove(-1);
+  if (dy > 0 && atTop    && (!isScrollable || answered)) simMove(-1);
 }
 
 function simMove(dir) {
