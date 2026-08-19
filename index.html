@@ -7,6 +7,10 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <style>
+/* Real visible viewport height — updated by JS via visualViewport API.
+   Falls back to svh so CSS-only renders aren't broken. */
+:root { --vvh: 100svh; }
+
 /* Flashcard flip */
 .flip-container { perspective: 1000px; }
 .flip-inner { transition: transform .55s cubic-bezier(.4,0,.2,1); transform-style: preserve-3d; position: relative; }
@@ -242,7 +246,7 @@ button, label, a, [onclick] { touch-action: manipulation; }
   <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeFocus()"></div>
   <div class="relative z-10 flex items-center justify-center min-h-screen p-3">
     <!-- Fixed height so footer never jumps -->
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xl flex flex-col" style="height:min(92vh,700px); height:min(92svh,700px)">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xl flex flex-col" style="height:min(calc(var(--vvh)*0.92),700px)">
       <!-- Header -->
       <div class="flex-shrink-0 flex items-start justify-between p-4 border-b border-slate-100">
         <div class="min-w-0 pr-2">
@@ -290,7 +294,7 @@ button, label, a, [onclick] { touch-action: manipulation; }
 <div id="fc-modal" class="fixed inset-0 z-50 hidden">
   <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" onclick="closeFlashcard()"></div>
   <div class="relative z-10 flex items-center justify-center min-h-screen p-3">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xl flex flex-col" style="height:min(92vh,700px); height:min(92svh,700px)">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xl flex flex-col" style="height:min(calc(var(--vvh)*0.92),700px)">
       <!-- Header -->
       <div class="flex-shrink-0 flex items-start justify-between p-4 border-b border-slate-100">
         <div class="min-w-0 pr-2">
@@ -331,7 +335,7 @@ button, label, a, [onclick] { touch-action: manipulation; }
 <div id="sim-modal" class="fixed inset-0 z-50 hidden">
   <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="confirmSimClose()"></div>
   <div class="relative z-10 flex items-center justify-center min-h-screen p-3">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xl flex flex-col" style="height:min(92vh,700px); height:min(92svh,700px)">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xl flex flex-col" style="height:min(calc(var(--vvh)*0.92),700px)">
       <!-- Header -->
       <div class="flex-shrink-0 flex items-start justify-between p-4 border-b border-slate-100">
         <div class="min-w-0 pr-2">
@@ -457,6 +461,19 @@ function seededShuffle(arr, seed) {
   }
   return a;
 }
+
+// ================================================================
+// VISUAL VIEWPORT HEIGHT — keeps --vvh in sync with actual visible area.
+// visualViewport.height excludes ALL browser chrome (Android nav bar,
+// iOS Safari bar, etc.) unlike vh/svh which can include those overlays.
+// ================================================================
+function updateVVH() {
+  const h = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+  document.documentElement.style.setProperty('--vvh', h + 'px');
+}
+if (window.visualViewport) window.visualViewport.addEventListener('resize', updateVVH);
+window.addEventListener('resize', updateVVH);
+updateVVH();
 
 // ================================================================
 // DATA LOADING
