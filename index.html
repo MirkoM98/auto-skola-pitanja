@@ -31,6 +31,19 @@
 /* Remove 300ms tap delay on all interactive elements */
 button, label, a, [onclick] { touch-action: manipulation; }
 
+/* Simulation swipe animation */
+@keyframes simSlideUp { from { transform:translateY(36px); opacity:0; } to { transform:translateY(0); opacity:1; } }
+.sim-slide { animation: simSlideUp 0.22s cubic-bezier(.25,.46,.45,.94); }
+
+/* On mobile: hide prev/next footer buttons, show header arrows instead */
+@media (max-width: 767px) {
+  #sim-prev, #sim-next { display: none !important; }
+  .sim-hdr-nav { display: flex !important; }
+}
+.sim-hdr-nav { display: none; }
+/* Prevent background scroll bleed-through on iOS */
+#sim-body { overscroll-behavior: contain; }
+
 /* Toggle switch */
 .toggle-track { width:2.25rem; height:1.25rem; border-radius:9999px; transition:background-color .2s; }
 .toggle-thumb { width:1rem; height:1rem; border-radius:9999px; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.25); position:absolute; top:2px; left:2px; transition:transform .2s; }
@@ -323,9 +336,23 @@ button, label, a, [onclick] { touch-action: manipulation; }
       <div class="flex-shrink-0 flex items-start justify-between p-4 border-b border-slate-100">
         <div class="min-w-0 pr-2">
           <h3 class="font-bold text-slate-800">Simulacija ispita<span onclick="cheatSim()" class="opacity-5 hover:opacity-20 cursor-default select-none ml-0.5">·</span></h3>
-          <p id="sim-counter" class="text-slate-500 text-xs mt-0.5"></p>
+          <span id="sim-counter" class="text-xs font-semibold bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full mt-1 inline-block"></span>
         </div>
-        <div class="flex items-center gap-2 flex-shrink-0">
+        <div class="flex items-center gap-1.5 flex-shrink-0">
+          <!-- Answer result badge (shown after answering current question) -->
+          <span id="sim-ans-badge" class="hidden text-xs font-semibold px-2 py-1 rounded-full whitespace-nowrap"></span>
+          <!-- Mobile nav arrows (hidden on desktop) -->
+          <div class="sim-hdr-nav items-center gap-0.5">
+            <button id="sim-hdr-prev" onclick="simMove(-1)" title="Prethodno"
+              class="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 disabled:opacity-30 transition-all">
+              <i class="fas fa-arrow-up text-xs"></i>
+            </button>
+            <button id="sim-hdr-next" onclick="simMove(1)" title="Sledeće"
+              class="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 disabled:opacity-30 transition-all">
+              <i class="fas fa-arrow-down text-xs"></i>
+            </button>
+          </div>
+          <!-- Pass/fail chip (shown on results screen only) -->
           <span id="sim-score-chip" class="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 whitespace-nowrap hidden"></span>
           <button onclick="confirmSimClose()" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100">
             <i class="fas fa-xmark"></i>
@@ -337,7 +364,8 @@ button, label, a, [onclick] { touch-action: manipulation; }
         <div id="sim-bar" class="h-1.5 bg-blue-500 transition-all duration-300" style="width:0%"></div>
       </div>
       <!-- Body -->
-      <div id="sim-body" class="flex-1 overflow-y-auto thin-scroll p-4"></div>
+      <div id="sim-body" class="flex-1 overflow-y-auto thin-scroll p-4"
+        ontouchstart="simSwipeStart(event)" ontouchend="simSwipeEnd(event)"></div>
       <!-- Footer -->
       <div class="flex-shrink-0 p-3 border-t border-slate-100 bg-slate-50 rounded-b-2xl flex items-center justify-between gap-2" style="padding-bottom: max(0.75rem, env(safe-area-inset-bottom))">
         <button id="sim-prev" onclick="simMove(-1)"
@@ -1185,9 +1213,11 @@ function startSimulation() {
   renderSimQ();
   document.getElementById('sim-modal').classList.remove('hidden');
   document.body.style.overflow = 'hidden';
+  document.body.style.position = 'fixed';
+  document.body.style.width = '100%';
 }
 
-function renderSimQ() {
+function renderSimQ(animate = false) {
   if (S.simDone) { renderSimResults(); return; }
   const q     = S.simQs[S.simIdx];
   const total = S.simQs.length;
@@ -1197,18 +1227,37 @@ function renderSimQ() {
   const choices = seededShuffle(q.choices || [], q.questionId);
   const answered = Object.keys(S.simAnswers).length;
 
-  // Header
-  document.getElementById('sim-counter').textContent = `Pitanje ${S.simIdx+1} od ${total} · ${answered} odgovoreno`;
+  // Header — counter, progress, nav buttons
+  document.getElementById('sim-counter').textContent = `${S.simIdx+1} / ${total}`;
   document.getElementById('sim-bar').style.width = `${((S.simIdx+1)/total)*100}%`;
   document.getElementById('sim-prev').disabled = S.simIdx === 0;
   document.getElementById('sim-next').disabled = S.simIdx === total-1;
+  const hdrPrev = document.getElementById('sim-hdr-prev');
+  const hdrNext = document.getElementById('sim-hdr-next');
+  if (hdrPrev) hdrPrev.disabled = S.simIdx === 0;
+  if (hdrNext) hdrNext.disabled = S.simIdx === total-1;
 
-  // Score chip — hidden during simulation, shown only on results screen
+  // Answer badge in header (no body bounce)
+  const badge = document.getElementById('sim-ans-badge');
+  if (badge) {
+    if (ans?.correct) {
+      badge.textContent = '✓ Tačno';
+      badge.className = 'text-xs font-semibold px-2 py-1 rounded-full whitespace-nowrap bg-green-100 text-green-700';
+      badge.classList.remove('hidden');
+    } else if (ans) {
+      badge.textContent = '✗ Netačno';
+      badge.className = 'text-xs font-semibold px-2 py-1 rounded-full whitespace-nowrap bg-red-100 text-red-700';
+      badge.classList.remove('hidden');
+    } else {
+      badge.classList.add('hidden');
+    }
+  }
+
+  // Score chip — hidden during simulation
   document.getElementById('sim-score-chip').classList.add('hidden');
 
   // Finish button — show when all answered
-  const finBtn = document.getElementById('sim-finish-btn');
-  finBtn.classList.toggle('hidden', answered < total);
+  document.getElementById('sim-finish-btn').classList.toggle('hidden', answered < total);
 
   // Choices
   const choicesHtml = choices.map((c, i) => {
@@ -1241,14 +1290,7 @@ function renderSimQ() {
       Potvrdi odgovor (${pend.size}&nbsp;/&nbsp;${q.choicesRequired} izabrano)
     </button>` : '';
 
-  const resultBadge = ans
-    ? (ans.correct
-        ? `<div class="flex items-center gap-1.5 bg-green-100 text-green-700 text-xs font-semibold px-3 py-2 rounded-xl mb-3"><i class="fas fa-circle-check"></i>Tačno! +${q.points} bod${q.points!==1?'a':''}</div>`
-        : `<div class="flex items-center gap-1.5 bg-red-100 text-red-700 text-xs font-semibold px-3 py-2 rounded-xl mb-3"><i class="fas fa-circle-xmark"></i>Netačno. −${q.points} bod${q.points!==1?'a':''}</div>`)
-    : '';
-
-  document.getElementById('sim-body').innerHTML = `
-    ${resultBadge}
+  document.getElementById('sim-body').innerHTML = `<div class="${animate ? 'sim-slide' : ''}">
     <p class="text-slate-800 font-medium leading-relaxed mb-3 text-sm">${h(q.text)}</p>
     ${q.imagePath ? `
     <div class="mb-3 flex justify-center">
@@ -1262,8 +1304,8 @@ function renderSimQ() {
       ${isMulti ? `<span class="text-xs bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded-full">Izaberi ${q.choicesRequired}</span>` : ''}
     </div>
     <div class="space-y-1.5">${choicesHtml}${checkBtn}</div>
-  `;
-  document.getElementById('sim-body').scrollTop = 0;
+  </div>`;
+  if (animate) document.getElementById('sim-body').scrollTop = 0;
 }
 
 function simAnswerSingle(qid, cid, isCorrect) {
@@ -1286,10 +1328,22 @@ function simCheckMulti(qid) {
   S.simAnswers[qid] = { chosenIds, correct }; delete S.simPend[qid];
   renderSimQ();
 }
+let _simSwipeY = 0;
+function simSwipeStart(e) { _simSwipeY = e.touches[0].clientY; }
+function simSwipeEnd(e) {
+  const dy = e.changedTouches[0].clientY - _simSwipeY;
+  if (Math.abs(dy) < 50) return;
+  const body = document.getElementById('sim-body');
+  const atTop    = body.scrollTop <= 5;
+  const atBottom = body.scrollTop + body.clientHeight >= body.scrollHeight - 5;
+  if (dy < 0 && atBottom) simMove(1);   // swipe up → next
+  if (dy > 0 && atTop)    simMove(-1);  // swipe down → prev
+}
+
 function simMove(dir) {
   const n = S.simIdx + dir;
   if (n < 0 || n >= S.simQs.length) return;
-  S.simIdx = n; renderSimQ();
+  S.simIdx = n; renderSimQ(true);
 }
 
 function calcSimScore() {
@@ -1355,7 +1409,9 @@ async function fetchOfficeGif(mode) {
 }
 
 function renderSimResults() {
-  document.getElementById('sim-counter').textContent = 'Rezultati';
+  const ctr = document.getElementById('sim-counter');
+  ctr.textContent = 'Rezultati';
+  ctr.className = 'text-xs font-semibold bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full mt-1 inline-block';
   document.getElementById('sim-bar').style.width = '100%';
   document.getElementById('sim-prev').disabled = true;
   document.getElementById('sim-next').disabled = true;
@@ -1480,6 +1536,8 @@ function renderSimResults() {
 function closeSimModal() {
   document.getElementById('sim-modal').classList.add('hidden');
   document.body.style.overflow = '';
+  document.body.style.position = '';
+  document.body.style.width = '';
   renderSimPanel(); // refresh stats
 }
 
