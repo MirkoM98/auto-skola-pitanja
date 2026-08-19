@@ -244,7 +244,7 @@ button, label, a, [onclick] { touch-action: manipulation; }
 <!-- ═══ FOCUS MODAL ═══ -->
 <div id="focus-modal" class="fixed inset-0 z-50 hidden">
   <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeFocus()"></div>
-  <div class="relative z-10 flex items-center justify-center min-h-screen p-3">
+  <div class="relative z-10 flex items-center justify-center p-3" style="min-height:var(--vvh)">
     <!-- Fixed height so footer never jumps -->
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xl flex flex-col" style="height:min(calc(var(--vvh)*0.92),700px)">
       <!-- Header -->
@@ -293,7 +293,7 @@ button, label, a, [onclick] { touch-action: manipulation; }
 <!-- ═══ FLASHCARD MODAL ═══ -->
 <div id="fc-modal" class="fixed inset-0 z-50 hidden">
   <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" onclick="closeFlashcard()"></div>
-  <div class="relative z-10 flex items-center justify-center min-h-screen p-3">
+  <div class="relative z-10 flex items-center justify-center p-3" style="min-height:var(--vvh)">
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xl flex flex-col" style="height:min(calc(var(--vvh)*0.92),700px)">
       <!-- Header -->
       <div class="flex-shrink-0 flex items-start justify-between p-4 border-b border-slate-100">
@@ -334,7 +334,7 @@ button, label, a, [onclick] { touch-action: manipulation; }
 <!-- ═══ SIMULATION MODAL ═══ -->
 <div id="sim-modal" class="fixed inset-0 z-50 hidden">
   <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="confirmSimClose()"></div>
-  <div class="relative z-10 flex items-center justify-center min-h-screen p-3">
+  <div class="relative z-10 flex items-center justify-center p-3" style="min-height:var(--vvh)">
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xl flex flex-col" style="height:min(calc(var(--vvh)*0.92),700px)">
       <!-- Header -->
       <div class="flex-shrink-0 flex items-start justify-between p-4 border-b border-slate-100">
@@ -473,6 +473,7 @@ function updateVVH() {
 }
 if (window.visualViewport) window.visualViewport.addEventListener('resize', updateVVH);
 window.addEventListener('resize', updateVVH);
+window.addEventListener('scroll', updateVVH, {passive: true});
 updateVVH();
 
 // ================================================================
