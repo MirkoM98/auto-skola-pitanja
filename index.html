@@ -31,6 +31,19 @@
 /* Remove 300ms tap delay on all interactive elements */
 button, label, a, [onclick] { touch-action: manipulation; }
 
+/* Modal: centred on desktop, bottom sheet on mobile */
+.modal-sheet-card { height: min(92svh, 700px); }
+@media (max-width: 767px) {
+  .modal-sheet-wrap { align-items: flex-end !important; padding: 0 !important; }
+  .modal-sheet-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: 1.25rem 1.25rem 0 0 !important;
+    height: calc(100svh - env(safe-area-inset-top, 24px)) !important;
+  }
+  .modal-handle { display: block !important; }
+}
+
 /* Toggle switch */
 .toggle-track { width:2.25rem; height:1.25rem; border-radius:9999px; transition:background-color .2s; }
 .toggle-thumb { width:1rem; height:1rem; border-radius:9999px; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.25); position:absolute; top:2px; left:2px; transition:transform .2s; }
@@ -227,9 +240,9 @@ button, label, a, [onclick] { touch-action: manipulation; }
 <!-- ═══ FOCUS MODAL ═══ -->
 <div id="focus-modal" class="fixed inset-0 z-50 hidden">
   <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeFocus()"></div>
-  <div class="relative z-10 flex items-center justify-center min-h-screen p-3">
-    <!-- Fixed height so footer never jumps -->
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xl flex flex-col" style="height:min(92vh,700px); height:min(92svh,700px)">
+  <div class="modal-sheet-wrap relative z-10 flex items-center justify-center min-h-screen p-3">
+    <div class="modal-sheet-card bg-white rounded-2xl shadow-2xl w-full max-w-xl flex flex-col">
+      <div class="modal-handle hidden w-10 h-1 bg-slate-300 rounded-full mx-auto mt-2.5 mb-0 flex-shrink-0"></div>
       <!-- Header -->
       <div class="flex-shrink-0 flex items-start justify-between p-4 border-b border-slate-100">
         <div class="min-w-0 pr-2">
@@ -276,8 +289,9 @@ button, label, a, [onclick] { touch-action: manipulation; }
 <!-- ═══ FLASHCARD MODAL ═══ -->
 <div id="fc-modal" class="fixed inset-0 z-50 hidden">
   <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" onclick="closeFlashcard()"></div>
-  <div class="relative z-10 flex items-center justify-center min-h-screen p-3">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xl flex flex-col" style="height:min(92vh,700px); height:min(92svh,700px)">
+  <div class="modal-sheet-wrap relative z-10 flex items-center justify-center min-h-screen p-3">
+    <div class="modal-sheet-card bg-white rounded-2xl shadow-2xl w-full max-w-xl flex flex-col">
+      <div class="modal-handle hidden w-10 h-1 bg-slate-300 rounded-full mx-auto mt-2.5 mb-0 flex-shrink-0"></div>
       <!-- Header -->
       <div class="flex-shrink-0 flex items-start justify-between p-4 border-b border-slate-100">
         <div class="min-w-0 pr-2">
@@ -317,8 +331,9 @@ button, label, a, [onclick] { touch-action: manipulation; }
 <!-- ═══ SIMULATION MODAL ═══ -->
 <div id="sim-modal" class="fixed inset-0 z-50 hidden">
   <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="confirmSimClose()"></div>
-  <div class="relative z-10 flex items-center justify-center min-h-screen p-3">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xl flex flex-col" style="height:min(92vh,700px); height:min(92svh,700px)">
+  <div class="modal-sheet-wrap relative z-10 flex items-center justify-center min-h-screen p-3">
+    <div class="modal-sheet-card bg-white rounded-2xl shadow-2xl w-full max-w-xl flex flex-col">
+      <div class="modal-handle hidden w-10 h-1 bg-slate-300 rounded-full mx-auto mt-2.5 mb-0 flex-shrink-0"></div>
       <!-- Header -->
       <div class="flex-shrink-0 flex items-start justify-between p-4 border-b border-slate-100">
         <div class="min-w-0 pr-2">
