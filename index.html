@@ -66,6 +66,10 @@
         class="nav-tab px-3 py-1.5 rounded-lg font-medium text-sm text-blue-200 hover:bg-white/10 transition-all">
         <i class="fas fa-traffic-light mr-1"></i>Znaci
       </button>
+      <button id="tab-simulacija" onclick="switchTab('simulacija')"
+        class="nav-tab px-3 py-1.5 rounded-lg font-medium text-sm text-blue-200 hover:bg-white/10 transition-all">
+        <i class="fas fa-clipboard-list mr-1"></i>Simulacija
+      </button>
     </div>
     <div class="hidden sm:flex items-center gap-1.5 border border-blue-500 rounded-full px-2.5 py-1 text-xs text-blue-300">
       <i class="fas fa-flag text-yellow-400"></i><span id="nav-flagged">0</span>&nbsp;označenih
@@ -153,6 +157,67 @@
     </div>
     <div id="signs-grid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3"></div>
   </div>
+
+  <!-- ─── Panel: Simulacija ─── -->
+  <div id="panel-simulacija" class="hidden">
+    <div class="max-w-lg mx-auto">
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 mb-4">
+        <!-- Title -->
+        <div class="flex items-center gap-3 mb-5">
+          <div class="w-11 h-11 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0">
+            <i class="fas fa-clipboard-list text-blue-600 text-lg"></i>
+          </div>
+          <div>
+            <h2 class="font-bold text-slate-800 text-base">Simulacija ispita</h2>
+            <p class="text-slate-500 text-xs">41 pitanje · položen ako gubiš ≤ 10 bodova</p>
+          </div>
+        </div>
+
+        <!-- Ponavljanje pitanja toggle -->
+        <div class="flex items-center justify-between py-3.5 border-t border-slate-100">
+          <div class="mr-4">
+            <p class="font-medium text-slate-700 text-sm">Ponavljanje pitanja</p>
+            <p class="text-slate-400 text-xs mt-0.5">Isključeno = pitanja se ne ponavljaju između simulacija</p>
+          </div>
+          <label class="cursor-pointer select-none flex-shrink-0">
+            <div class="relative">
+              <input type="checkbox" id="chk-repeat" class="sr-only" onchange="onRepeatChange()">
+              <div id="repeat-track" class="toggle-track" style="background:#d1d5db"></div>
+              <div id="repeat-thumb" class="toggle-thumb" style="transform:translateX(0)"></div>
+            </div>
+          </label>
+        </div>
+
+        <!-- Stats -->
+        <div id="sim-stats" class="py-3.5 border-t border-slate-100"></div>
+
+        <!-- Reset -->
+        <div class="flex items-center justify-between py-3.5 border-t border-slate-100">
+          <div class="mr-4">
+            <p class="font-medium text-slate-700 text-sm">Reset istorije pitanja</p>
+            <p class="text-slate-400 text-xs mt-0.5">Sva pitanja postaju ponovo dostupna</p>
+          </div>
+          <button onclick="resetUsedQids()"
+            class="flex items-center gap-1.5 px-3 py-1.5 border border-red-200 text-red-500 rounded-lg text-xs hover:bg-red-50 transition-all flex-shrink-0">
+            <i class="fas fa-rotate-left"></i>Reset
+          </button>
+        </div>
+      </div>
+
+      <!-- Upozorenje ako nema dovoljno pitanja -->
+      <div id="sim-warning" class="hidden bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4 text-amber-700 text-sm flex items-center gap-2">
+        <i class="fas fa-triangle-exclamation flex-shrink-0"></i>
+        <span id="sim-warning-text"></span>
+      </div>
+
+      <!-- Start dugme -->
+      <button onclick="startSimulation()"
+        class="w-full py-4 bg-blue-600 text-white rounded-2xl font-bold text-base hover:bg-blue-700 active:bg-blue-800 transition-all shadow-lg flex items-center justify-center gap-3">
+        <i class="fas fa-play"></i>Pokreni Simulaciju
+      </button>
+    </div>
+  </div>
+
 
 </main>
 
@@ -246,6 +311,49 @@
   </div>
 </div>
 
+<!-- ═══ SIMULATION MODAL ═══ -->
+<div id="sim-modal" class="fixed inset-0 z-50 hidden">
+  <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="confirmSimClose()"></div>
+  <div class="relative z-10 flex items-center justify-center min-h-screen p-3">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xl flex flex-col" style="height:min(92vh,700px)">
+      <!-- Header -->
+      <div class="flex-shrink-0 flex items-start justify-between p-4 border-b border-slate-100">
+        <div class="min-w-0 pr-2">
+          <h3 class="font-bold text-slate-800">Simulacija ispita</h3>
+          <p id="sim-counter" class="text-slate-500 text-xs mt-0.5"></p>
+        </div>
+        <div class="flex items-center gap-2 flex-shrink-0">
+          <span id="sim-score-chip" class="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 whitespace-nowrap hidden"></span>
+          <button onclick="confirmSimClose()" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100">
+            <i class="fas fa-xmark"></i>
+          </button>
+        </div>
+      </div>
+      <!-- Progress bar -->
+      <div class="flex-shrink-0 h-1.5 bg-slate-100">
+        <div id="sim-bar" class="h-1.5 bg-blue-500 transition-all duration-300" style="width:0%"></div>
+      </div>
+      <!-- Body -->
+      <div id="sim-body" class="flex-1 overflow-y-auto thin-scroll p-4"></div>
+      <!-- Footer -->
+      <div class="flex-shrink-0 p-3 border-t border-slate-100 bg-slate-50 rounded-b-2xl flex items-center justify-between gap-2">
+        <button id="sim-prev" onclick="simMove(-1)"
+          class="flex items-center gap-1.5 px-3 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-100 text-xs disabled:opacity-40 disabled:cursor-not-allowed">
+          <i class="fas fa-arrow-left"></i>Prethodno
+        </button>
+        <button id="sim-finish-btn" onclick="finishSim()"
+          class="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-xs font-semibold hidden">
+          <i class="fas fa-flag-checkered"></i>Završi
+        </button>
+        <button id="sim-next" onclick="simMove(1)"
+          class="flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-xs disabled:opacity-40 disabled:cursor-not-allowed">
+          Sledeće<i class="fas fa-arrow-right"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ═══ LIGHTBOX ═══ -->
 <div id="lightbox" class="fixed inset-0 z-[70] hidden bg-black/92 flex items-center justify-center" onclick="closeLightbox()">
   <img id="lb-img" src="" alt="Slika" class="max-w-[95vw] max-h-[92vh] object-contain rounded-xl shadow-2xl">
@@ -280,8 +388,15 @@ const S = {
   fcScore: {ok:0, fail:0},
   // Signs filter
   signsShowAll: false,
+  // Simulation
+  simQs: [], simIdx: 0, simAnswers: {}, simPend: {},
+  simDone: false,
+  repeatQs: false,
+  usedQids: new Set(),
 };
-const LS_KEY = 'autoskola_flagged_v2';
+const LS_KEY     = 'autoskola_flagged_v2';
+const LS_REPEAT  = 'autoskola_sim_repeat';
+const LS_USED    = 'autoskola_sim_used';
 
 // ================================================================
 // LOCALSTORAGE
@@ -330,7 +445,7 @@ async function init() {
         }))
       }))
     }));
-    lsLoad(); lsSave();
+    lsLoad(); lsSave(); lsLoadSim();
     document.getElementById('loading-wrap').classList.add('hidden');
     initToggle();
     initSignsToggle();
@@ -369,10 +484,11 @@ function switchTab(tab) {
   document.querySelectorAll('.nav-tab').forEach(b => { b.classList.remove('bg-white/20','text-white'); b.classList.add('text-blue-200'); });
   const btn = document.getElementById('tab-'+tab);
   if (btn) { btn.classList.add('bg-white/20','text-white'); btn.classList.remove('text-blue-200'); }
-  ['ucenje','znaci'].forEach(p => document.getElementById('panel-'+p).classList.add('hidden'));
+  ['ucenje','znaci','simulacija'].forEach(p => document.getElementById('panel-'+p).classList.add('hidden'));
   document.getElementById('panel-'+tab).classList.remove('hidden');
   if (tab === 'ucenje') renderAll();
-  else renderSignsGrid();
+  else if (tab === 'znaci') renderSignsGrid();
+  else if (tab === 'simulacija') renderSimPanel();
 }
 
 // ================================================================
@@ -976,6 +1092,311 @@ function fcMove(dir) {
 function fcShuffle() { S.fcqs=shuffle([...S.fcqs]); S.fcIdx=0; S.fcAns=null; S.fcPend=new Set(); S.fcScore={ok:0,fail:0}; renderFC(); }
 
 // ================================================================
+// SIMULATION
+// ================================================================
+const SIM_QUESTIONS   = 41;
+const SIM_FAIL_POINTS = 10; // max allowed lost points (gubitak bodova)
+
+function lsLoadSim() {
+  try { S.repeatQs = localStorage.getItem(LS_REPEAT) === 'true'; } catch {}
+  try { const v=localStorage.getItem(LS_USED); if(v) S.usedQids=new Set(JSON.parse(v).map(Number)); } catch {}
+}
+function lsSaveSim() {
+  try { localStorage.setItem(LS_REPEAT, String(S.repeatQs)); } catch {}
+  try { localStorage.setItem(LS_USED, JSON.stringify([...S.usedQids])); } catch {}
+}
+
+function renderSimPanel() {
+  // Sync toggle UI
+  const chk = document.getElementById('chk-repeat');
+  if (chk) chk.checked = S.repeatQs;
+  syncRepeatToggle();
+
+  const totalAll = S.raw.reduce((n,c)=>n+c.subcategories.reduce((m,s)=>m+s.questions.length,0),0);
+  const usedCnt  = S.usedQids.size;
+  const available = totalAll - usedCnt;
+
+  // Stats
+  const stats = document.getElementById('sim-stats');
+  if (stats) stats.innerHTML = `
+    <div class="grid grid-cols-3 gap-3 text-center">
+      <div class="bg-slate-50 rounded-xl p-3">
+        <p class="text-xl font-bold text-slate-800">${totalAll}</p>
+        <p class="text-xs text-slate-500">Ukupno pitanja</p>
+      </div>
+      <div class="bg-amber-50 rounded-xl p-3">
+        <p class="text-xl font-bold text-amber-600">${usedCnt}</p>
+        <p class="text-xs text-slate-500">Urađeno</p>
+      </div>
+      <div class="bg-blue-50 rounded-xl p-3">
+        <p class="text-xl font-bold text-blue-600">${available}</p>
+        <p class="text-xs text-slate-500">Dostupno</p>
+      </div>
+    </div>`;
+
+  // Warning
+  const warn = document.getElementById('sim-warning');
+  const warnTxt = document.getElementById('sim-warning-text');
+  if (!S.repeatQs && available < SIM_QUESTIONS) {
+    warn.classList.remove('hidden');
+    if (available === 0) {
+      warnTxt.textContent = 'Sva pitanja su urađena. Resetuj istoriju ili uključi ponavljanje.';
+    } else {
+      warnTxt.textContent = `Samo ${available} pitanja dostupno (potrebno ${SIM_QUESTIONS}). Simulacija će koristiti sva dostupna pitanja.`;
+    }
+  } else {
+    warn.classList.add('hidden');
+  }
+}
+
+function selectSimQuestions() {
+  let pool = [];
+  S.raw.forEach(cat => cat.subcategories.forEach(sub =>
+    (sub.questions||[]).forEach(q => pool.push(q))
+  ));
+  if (!S.repeatQs) {
+    const available = pool.filter(q => !S.usedQids.has(q.questionId));
+    pool = available.length > 0 ? available : pool; // fallback to all if exhausted
+  }
+  return shuffle([...pool]).slice(0, Math.min(SIM_QUESTIONS, pool.length));
+}
+
+function startSimulation() {
+  const qs = selectSimQuestions();
+  if (!qs.length) return;
+
+  S.simQs = qs;
+  S.simIdx = 0;
+  S.simAnswers = {};
+  S.simPend = {};
+  S.simDone = false;
+
+  renderSimQ();
+  document.getElementById('sim-modal').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+}
+
+function renderSimQ() {
+  if (S.simDone) { renderSimResults(); return; }
+  const q     = S.simQs[S.simIdx];
+  const total = S.simQs.length;
+  const ans   = S.simAnswers[q.questionId];
+  const pend  = S.simPend[q.questionId] || new Set();
+  const isMulti = q.choicesRequired > 1;
+  const choices = seededShuffle(q.choices || [], q.questionId);
+  const answered = Object.keys(S.simAnswers).length;
+
+  // Header
+  document.getElementById('sim-counter').textContent = `Pitanje ${S.simIdx+1} od ${total} · ${answered} odgovoreno`;
+  document.getElementById('sim-bar').style.width = `${((S.simIdx+1)/total)*100}%`;
+  document.getElementById('sim-prev').disabled = S.simIdx === 0;
+  document.getElementById('sim-next').disabled = S.simIdx === total-1;
+
+  // Score chip
+  const chip = document.getElementById('sim-score-chip');
+  if (answered > 0) {
+    const res = calcSimScore();
+    chip.textContent = `−${res.lost} bod.`;
+    chip.className = `text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${res.lost > SIM_FAIL_POINTS ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`;
+    chip.classList.remove('hidden');
+  } else {
+    chip.classList.add('hidden');
+  }
+
+  // Finish button — show when all answered
+  const finBtn = document.getElementById('sim-finish-btn');
+  finBtn.classList.toggle('hidden', answered < total);
+
+  // Choices
+  const choicesHtml = choices.map((c, i) => {
+    let cls = 'cb-idle';
+    if (ans) {
+      if      (c.isCorrect && ans.chosenIds.includes(c.choiceId)) cls = 'cb-correct';
+      else if (c.isCorrect)                                       cls = 'cb-missed';
+      else if (ans.chosenIds.includes(c.choiceId))                cls = 'cb-wrong';
+      else                                                         cls = 'cb-neutral';
+    }
+    const icon = ans
+      ? (c.isCorrect ? '<i class="fas fa-check text-green-600 ml-auto text-xs flex-shrink-0"></i>'
+          : ans.chosenIds.includes(c.choiceId) ? '<i class="fas fa-xmark text-red-500 ml-auto text-xs flex-shrink-0"></i>' : '')
+      : '';
+    const letter = String.fromCharCode(65+i);
+    const handler = ans ? 'disabled' : (isMulti
+      ? `onclick="simPendToggle(${q.questionId},${c.choiceId})"`
+      : `onclick="simAnswerSingle(${q.questionId},${c.choiceId},${c.isCorrect})"`);
+    return `<button class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl border text-xs text-left transition-all ${cls}" ${handler}>
+      <span class="w-5 h-5 rounded-full border border-current/20 text-xs font-bold flex items-center justify-center flex-shrink-0 opacity-50">${letter}</span>
+      <span class="flex-1 leading-relaxed">${h(c.text)}</span>${icon}
+    </button>`;
+  }).join('');
+
+  const checkBtn = isMulti && !ans ? `
+    <button onclick="simCheckMulti(${q.questionId})" ${pend.size===0?'disabled':''}
+      class="mt-1 w-full py-2 text-xs font-semibold rounded-xl border transition-all ${pend.size>0?'bg-blue-600 text-white border-blue-600 hover:bg-blue-700':'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'}">
+      Potvrdi odgovor (${pend.size}&nbsp;/&nbsp;${q.choicesRequired} izabrano)
+    </button>` : '';
+
+  const resultBadge = ans
+    ? (ans.correct
+        ? `<div class="flex items-center gap-1.5 bg-green-100 text-green-700 text-xs font-semibold px-3 py-2 rounded-xl mb-3"><i class="fas fa-circle-check"></i>Tačno! +${q.points} bod${q.points!==1?'a':''}</div>`
+        : `<div class="flex items-center gap-1.5 bg-red-100 text-red-700 text-xs font-semibold px-3 py-2 rounded-xl mb-3"><i class="fas fa-circle-xmark"></i>Netačno. −${q.points} bod${q.points!==1?'a':''}</div>`)
+    : '';
+
+  document.getElementById('sim-body').innerHTML = `
+    ${resultBadge}
+    <p class="text-slate-800 font-medium leading-relaxed mb-3 text-sm">${h(q.text)}</p>
+    ${q.imagePath ? `
+    <div class="mb-3 flex justify-center">
+      <img src="${q.imagePath}" alt="Slika" class="max-h-48 rounded-xl border border-slate-200 shadow-sm object-contain zoomable"
+          onclick="openLightbox('${jsq(q.imagePath)}')" onerror="this.parentElement.remove()">
+    </div>` : ''}
+    <div class="flex items-center gap-1.5 mb-3">
+      <span class="text-xs bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full">
+        <i class="fas fa-star text-yellow-400 mr-0.5 text-xs"></i>${q.points} bod${q.points!==1?'a':''}
+      </span>
+      ${isMulti ? `<span class="text-xs bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded-full">Izaberi ${q.choicesRequired}</span>` : ''}
+    </div>
+    <div class="space-y-1.5">${choicesHtml}${checkBtn}</div>
+  `;
+  document.getElementById('sim-body').scrollTop = 0;
+}
+
+function simAnswerSingle(qid, cid, isCorrect) {
+  if (S.simAnswers[qid]) return;
+  S.simAnswers[qid] = { chosenIds:[cid], correct:!!isCorrect };
+  renderSimQ();
+}
+function simPendToggle(qid, cid) {
+  if (S.simAnswers[qid]) return;
+  if (!S.simPend[qid]) S.simPend[qid] = new Set();
+  const p = S.simPend[qid]; p.has(cid) ? p.delete(cid) : p.add(cid);
+  renderSimQ();
+}
+function simCheckMulti(qid) {
+  const q = findQuestion(qid); if (!q || S.simAnswers[qid]) return;
+  const pend = S.simPend[qid] || new Set();
+  const chosenIds = [...pend];
+  const correctIds = new Set(q.choices.filter(c=>c.isCorrect).map(c=>c.choiceId));
+  const correct = chosenIds.length===correctIds.size && chosenIds.every(id=>correctIds.has(id));
+  S.simAnswers[qid] = { chosenIds, correct }; delete S.simPend[qid];
+  renderSimQ();
+}
+function simMove(dir) {
+  const n = S.simIdx + dir;
+  if (n < 0 || n >= S.simQs.length) return;
+  S.simIdx = n; renderSimQ();
+}
+
+function calcSimScore() {
+  let totalPossible = 0, scored = 0;
+  S.simQs.forEach(q => {
+    totalPossible += q.points;
+    if (S.simAnswers[q.questionId]?.correct) scored += q.points;
+  });
+  const lost = totalPossible - scored;
+  const answered = Object.keys(S.simAnswers).length;
+  return { totalPossible, scored, lost, answered, passed: lost <= SIM_FAIL_POINTS };
+}
+
+function finishSim() {
+  S.simDone = true;
+  // Save used question IDs (only when repeat is off)
+  if (!S.repeatQs) {
+    S.simQs.forEach(q => S.usedQids.add(q.questionId));
+    lsSaveSim();
+  }
+  renderSimResults();
+}
+
+function renderSimResults() {
+  const r = calcSimScore();
+  const correct = S.simQs.filter(q => S.simAnswers[q.questionId]?.correct).length;
+  const wrong   = S.simQs.filter(q => S.simAnswers[q.questionId] && !S.simAnswers[q.questionId].correct).length;
+  const unanswered = S.simQs.length - r.answered;
+
+  document.getElementById('sim-counter').textContent = 'Rezultati';
+  document.getElementById('sim-bar').style.width = '100%';
+  document.getElementById('sim-bar').style.backgroundColor = r.passed ? '#22c55e' : '#ef4444';
+  document.getElementById('sim-prev').disabled = true;
+  document.getElementById('sim-next').disabled = true;
+  document.getElementById('sim-finish-btn').classList.add('hidden');
+
+  const chip = document.getElementById('sim-score-chip');
+  chip.textContent = r.passed ? 'POLOŽEN' : 'PAO';
+  chip.className = `text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap ${r.passed ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`;
+  chip.classList.remove('hidden');
+
+  document.getElementById('sim-body').innerHTML = `
+    <div class="text-center py-4">
+      <div class="text-6xl mb-4">${r.passed ? '🎉' : '😞'}</div>
+      <h2 class="text-2xl font-bold mb-1 ${r.passed ? 'text-green-700' : 'text-red-600'}">${r.passed ? 'POLOŽEN!' : 'NIJE POLOŽEN'}</h2>
+      <p class="text-slate-500 text-sm mb-6">
+        ${r.passed ? `Čestitamo! Izgubio si ${r.lost} od dozvoljenih ${SIM_FAIL_POINTS} bodova.`
+                   : `Izgubio si ${r.lost} bodova (dozvoljeno ${SIM_FAIL_POINTS}).`}
+      </p>
+      <div class="grid grid-cols-2 gap-3 mb-6 text-left">
+        <div class="bg-green-50 border border-green-200 rounded-xl p-3">
+          <p class="text-xl font-bold text-green-700">${correct} / ${S.simQs.length}</p>
+          <p class="text-xs text-slate-500">Tačnih odgovora</p>
+        </div>
+        <div class="bg-red-50 border border-red-200 rounded-xl p-3">
+          <p class="text-xl font-bold text-red-600">${wrong} / ${S.simQs.length}</p>
+          <p class="text-xs text-slate-500">Netačnih odgovora</p>
+        </div>
+        <div class="bg-blue-50 border border-blue-200 rounded-xl p-3">
+          <p class="text-xl font-bold text-blue-600">${r.scored} / ${r.totalPossible}</p>
+          <p class="text-xs text-slate-500">Bodova</p>
+        </div>
+        <div class="bg-${r.passed?'green':'red'}-50 border border-${r.passed?'green':'red'}-200 rounded-xl p-3">
+          <p class="text-xl font-bold text-${r.passed?'green':'red'}-600">−${r.lost}</p>
+          <p class="text-xs text-slate-500">Izgubljenih (max −${SIM_FAIL_POINTS})</p>
+        </div>
+      </div>
+      ${unanswered > 0 ? `<p class="text-amber-600 text-xs mb-4"><i class="fas fa-triangle-exclamation mr-1"></i>${unanswered} pitanje/a bez odgovora.</p>` : ''}
+      <div class="flex gap-3 justify-center flex-wrap">
+        <button onclick="closeSimModal(); startSimulation()"
+          class="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-all">
+          <i class="fas fa-rotate-right"></i>Nova simulacija
+        </button>
+        <button onclick="closeSimModal()"
+          class="flex items-center gap-2 px-5 py-2.5 border border-slate-300 text-slate-700 rounded-xl hover:bg-slate-50 transition-all">
+          Zatvori
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+function closeSimModal() {
+  document.getElementById('sim-modal').classList.add('hidden');
+  document.body.style.overflow = '';
+  renderSimPanel(); // refresh stats
+}
+
+function confirmSimClose() {
+  if (S.simDone || Object.keys(S.simAnswers).length === 0) { closeSimModal(); return; }
+  if (confirm('Napustiti simulaciju? Napredak neće biti sačuvan.')) closeSimModal();
+}
+
+function onRepeatChange() {
+  S.repeatQs = document.getElementById('chk-repeat').checked;
+  syncRepeatToggle();
+  lsSaveSim();
+  renderSimPanel();
+}
+function syncRepeatToggle() {
+  const track = document.getElementById('repeat-track');
+  const thumb = document.getElementById('repeat-thumb');
+  if (track) track.style.backgroundColor = S.repeatQs ? '#3b82f6' : '#d1d5db';
+  if (thumb) thumb.style.transform = S.repeatQs ? 'translateX(18px)' : 'translateX(0)';
+}
+function resetUsedQids() {
+  S.usedQids = new Set();
+  lsSaveSim();
+  renderSimPanel();
+}
+
+// ================================================================
 // LIGHTBOX
 // ================================================================
 function openLightbox(src) {
@@ -1003,7 +1424,12 @@ document.addEventListener('keydown', e => {
   const lb = !document.getElementById('lightbox').classList.contains('hidden');
   const fm = !document.getElementById('focus-modal').classList.contains('hidden');
   const fc = !document.getElementById('fc-modal').classList.contains('hidden');
-  if (e.key==='Escape') { if(lb){closeLightbox();return;} if(fm){closeFocus();return;} if(fc){closeFlashcard();return;} }
+  const sm = !document.getElementById('sim-modal').classList.contains('hidden');
+  if (e.key==='Escape') { if(lb){closeLightbox();return;} if(fm){closeFocus();return;} if(fc){closeFlashcard();return;} if(sm){confirmSimClose();return;} }
+  if (sm && !S.simDone) {
+    if (e.key==='ArrowRight'||e.key==='ArrowDown') { e.preventDefault(); simMove(1); }
+    if (e.key==='ArrowLeft' ||e.key==='ArrowUp')   { e.preventDefault(); simMove(-1); }
+  }
   if (fm) {
     if (e.key==='ArrowRight'||e.key==='ArrowDown')  { e.preventDefault(); focusMove(1); }
     if (e.key==='ArrowLeft' ||e.key==='ArrowUp')    { e.preventDefault(); focusMove(-1); }
