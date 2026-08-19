@@ -38,6 +38,8 @@ button, label, a, [onclick] { touch-action: manipulation; }
 /* Simulation swipe animation */
 @keyframes simSlideUp { from { transform:translateY(36px); opacity:0; } to { transform:translateY(0); opacity:1; } }
 .sim-slide { animation: simSlideUp 0.22s cubic-bezier(.25,.46,.45,.94); }
+@keyframes simArrowPrime { 0% { transform:scale(1); } 40% { background-color:#3b82f6; color:#fff; transform:scale(1.35); } 100% { transform:scale(1); } }
+.sim-arrow-prime { animation: simArrowPrime 0.35s ease-out !important; }
 
 /* On mobile: hide prev/next footer buttons, show header arrows instead */
 @media (max-width: 767px) {
@@ -374,7 +376,7 @@ button, label, a, [onclick] { touch-action: manipulation; }
       </div>
       <!-- Body -->
       <div id="sim-body" class="flex-1 overflow-y-auto thin-scroll p-4"
-        ontouchstart="simSwipeStart(event)" ontouchmove="simTouchMove(event)" ontouchend="simSwipeEnd(event)"></div>
+        ontouchstart="simSwipeStart(event)" ontouchmove="simTouchMove(event)" ontouchend="simSwipeEnd(event)" onscroll="simBodyScroll()"></div>
       <!-- Footer -->
       <div class="flex-shrink-0 p-3 border-t border-slate-100 bg-slate-50 rounded-b-2xl flex items-center justify-between gap-2" style="padding-bottom: max(0.75rem, env(safe-area-inset-bottom))">
         <button id="sim-prev" onclick="simMove(-1)"
@@ -1242,6 +1244,7 @@ function startSimulation() {
 
 function renderSimQ(animate = false) {
   if (S.simDone) { renderSimResults(); return; }
+  _simEdgePrimed = 0;
   const q     = S.simQs[S.simIdx];
   const total = S.simQs.length;
   const ans   = S.simAnswers[q.questionId];
@@ -1359,13 +1362,19 @@ function simCheckMulti(qid) {
   renderSimQ();
 }
 let _simSwipeY = 0;
+let _simEdgePrimed = 0; // 1 = primed for next, -1 = primed for prev
 function simSwipeStart(e) { _simSwipeY = e.touches[0].clientY; }
 function simTouchMove(e) {
-  // Prevent browser pull-to-refresh when swiping down at the top of the body
   const body = document.getElementById('sim-body');
   if (body && body.scrollTop <= 0 && e.touches[0].clientY > _simSwipeY) {
     e.preventDefault();
   }
+}
+function simBodyScroll() { _simEdgePrimed = 0; }
+function simPrimeArrow(dir) {
+  const id = dir > 0 ? 'sim-hdr-next' : 'sim-hdr-prev';
+  const btn = document.getElementById(id);
+  if (btn) { btn.classList.remove('sim-arrow-prime'); void btn.offsetWidth; btn.classList.add('sim-arrow-prime'); }
 }
 function simSwipeEnd(e) {
   const dy = e.changedTouches[0].clientY - _simSwipeY;
@@ -1373,8 +1382,15 @@ function simSwipeEnd(e) {
   const body = document.getElementById('sim-body');
   const atTop    = body.scrollTop <= 5;
   const atBottom = body.scrollTop + body.clientHeight >= body.scrollHeight - 5;
-  if (dy < 0 && atBottom) simMove(1);   // swipe up at bottom → next
-  if (dy > 0 && atTop)    simMove(-1);  // swipe down at top → prev
+  if (dy < 0 && atBottom) {
+    if (_simEdgePrimed === 1) { _simEdgePrimed = 0; simMove(1); }
+    else { _simEdgePrimed = 1; simPrimeArrow(1); }
+  } else if (dy > 0 && atTop) {
+    if (_simEdgePrimed === -1) { _simEdgePrimed = 0; simMove(-1); }
+    else { _simEdgePrimed = -1; simPrimeArrow(-1); }
+  } else {
+    _simEdgePrimed = 0;
+  }
 }
 
 function simMove(dir) {
