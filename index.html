@@ -2,7 +2,7 @@
 <html lang="sr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Auto Škola — Učenje Pitanja</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -27,6 +27,9 @@
 .cb-wrong   { background:#fee2e2; border-color:#fca5a5; color:#991b1b; cursor:default; }
 .cb-missed  { background:#f0fdf4; border-color:#86efac; color:#166534; cursor:default; }
 .cb-neutral { background:#f8fafc; border-color:#e2e8f0; color:#94a3b8; cursor:default; }
+
+/* Remove 300ms tap delay on all interactive elements */
+button, label, a, [onclick] { touch-action: manipulation; }
 
 /* Toggle switch */
 .toggle-track { width:2.25rem; height:1.25rem; border-radius:9999px; transition:background-color .2s; }
@@ -336,7 +339,7 @@
       <!-- Body -->
       <div id="sim-body" class="flex-1 overflow-y-auto thin-scroll p-4"></div>
       <!-- Footer -->
-      <div class="flex-shrink-0 p-3 border-t border-slate-100 bg-slate-50 rounded-b-2xl flex items-center justify-between gap-2">
+      <div class="flex-shrink-0 p-3 border-t border-slate-100 bg-slate-50 rounded-b-2xl flex items-center justify-between gap-2" style="padding-bottom: max(0.75rem, env(safe-area-inset-bottom))">
         <button id="sim-prev" onclick="simMove(-1)"
           class="flex items-center gap-1.5 px-3 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-100 text-xs disabled:opacity-40 disabled:cursor-not-allowed">
           <i class="fas fa-arrow-left"></i>Prethodno
@@ -1215,6 +1218,8 @@ function renderSimQ() {
       else if (c.isCorrect)                                       cls = 'cb-missed';
       else if (ans.chosenIds.includes(c.choiceId))                cls = 'cb-wrong';
       else                                                         cls = 'cb-neutral';
+    } else if (pend.has(c.choiceId)) {
+      cls = 'cb-pending';
     }
     const icon = ans
       ? (c.isCorrect ? '<i class="fas fa-check text-green-600 ml-auto text-xs flex-shrink-0"></i>'
