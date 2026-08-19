@@ -38,6 +38,8 @@ button, label, a, [onclick] { touch-action: manipulation; }
 /* Simulation swipe animation */
 @keyframes simSlideUp { from { transform:translateY(36px); opacity:0; } to { transform:translateY(0); opacity:1; } }
 .sim-slide { animation: simSlideUp 0.22s cubic-bezier(.25,.46,.45,.94); }
+@keyframes simLimitFlash { 0%,100% {} 25%,65% { background-color:#ef4444 !important; border-color:#ef4444 !important; color:#fff !important; transform:scale(1.02); } }
+.sim-limit-flash { animation: simLimitFlash 0.45s ease-out !important; }
 
 /* On mobile: hide prev/next footer buttons, show header arrows instead */
 @media (max-width: 767px) {
@@ -1315,7 +1317,7 @@ function renderSimQ(animate = false) {
   }).join('');
 
   const checkBtn = isMulti && !ans ? `
-    <button onclick="simCheckMulti(${q.questionId})" ${pend.size===0?'disabled':''}
+    <button id="sim-check-btn" onclick="simCheckMulti(${q.questionId})" ${pend.size===0?'disabled':''}
       class="mt-1 w-full py-2 text-xs font-semibold rounded-xl border transition-all ${pend.size>0?'bg-blue-600 text-white border-blue-600 hover:bg-blue-700':'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'}">
       Potvrdi odgovor (${pend.size}&nbsp;/&nbsp;${q.choicesRequired} izabrano)
     </button>` : '';
@@ -1346,7 +1348,13 @@ function simAnswerSingle(qid, cid, isCorrect) {
 function simPendToggle(qid, cid) {
   if (S.simAnswers[qid]) return;
   if (!S.simPend[qid]) S.simPend[qid] = new Set();
-  const p = S.simPend[qid]; p.has(cid) ? p.delete(cid) : p.add(cid);
+  const p = S.simPend[qid];
+  if (!p.has(cid) && p.size >= (findQuestion(qid)?.choicesRequired || 1)) {
+    const btn = document.getElementById('sim-check-btn');
+    if (btn) { btn.classList.remove('sim-limit-flash'); void btn.offsetWidth; btn.classList.add('sim-limit-flash'); }
+    return;
+  }
+  p.has(cid) ? p.delete(cid) : p.add(cid);
   renderSimQ();
 }
 function simCheckMulti(qid) {
