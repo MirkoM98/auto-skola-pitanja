@@ -38,6 +38,8 @@ button, label, a, [onclick] { touch-action: manipulation; }
 /* Simulation swipe animation */
 @keyframes simSlideUp { from { transform:translateY(36px); opacity:0; } to { transform:translateY(0); opacity:1; } }
 .sim-slide { animation: simSlideUp 0.22s cubic-bezier(.25,.46,.45,.94); }
+@keyframes simArrowFlash { 0%,20% { background-color:#3b82f6; color:#fff; transform:scale(1.2); } 100% { background-color:transparent; color:inherit; transform:scale(1); } }
+.sim-arrow-flash { animation: simArrowFlash 0.4s ease-out !important; }
 
 /* On mobile: hide prev/next footer buttons, show header arrows instead */
 @media (max-width: 767px) {
@@ -374,7 +376,7 @@ button, label, a, [onclick] { touch-action: manipulation; }
       </div>
       <!-- Body -->
       <div id="sim-body" class="flex-1 overflow-y-auto thin-scroll p-4"
-        ontouchstart="simSwipeStart(event)" ontouchend="simSwipeEnd(event)"></div>
+        ontouchstart="simSwipeStart(event)" ontouchmove="simTouchMove(event)" ontouchend="simSwipeEnd(event)"></div>
       <!-- Footer -->
       <div class="flex-shrink-0 p-3 border-t border-slate-100 bg-slate-50 rounded-b-2xl flex items-center justify-between gap-2" style="padding-bottom: max(0.75rem, env(safe-area-inset-bottom))">
         <button id="sim-prev" onclick="simMove(-1)"
@@ -1360,10 +1362,20 @@ function simCheckMulti(qid) {
 }
 let _simSwipeY = 0;
 function simSwipeStart(e) { _simSwipeY = e.touches[0].clientY; }
+function simTouchMove(e) {
+  // Prevent browser pull-to-refresh when swiping down at the top of the body
+  const body = document.getElementById('sim-body');
+  if (body && body.scrollTop <= 0 && e.touches[0].clientY > _simSwipeY) {
+    e.preventDefault();
+  }
+}
 function simSwipeEnd(e) {
   const dy = e.changedTouches[0].clientY - _simSwipeY;
   if (Math.abs(dy) < 50) return;
   const body = document.getElementById('sim-body');
+  // If content needs scrolling, let the user scroll — use arrows for navigation
+  const isScrollable = body.scrollHeight > body.clientHeight + 10;
+  if (isScrollable) return;
   const atTop    = body.scrollTop <= 5;
   const atBottom = body.scrollTop + body.clientHeight >= body.scrollHeight - 5;
   if (dy < 0 && atBottom) simMove(1);   // swipe up → next
@@ -1373,6 +1385,9 @@ function simSwipeEnd(e) {
 function simMove(dir) {
   const n = S.simIdx + dir;
   if (n < 0 || n >= S.simQs.length) return;
+  const btnId = dir > 0 ? 'sim-hdr-next' : 'sim-hdr-prev';
+  const btn = document.getElementById(btnId);
+  if (btn) { btn.classList.remove('sim-arrow-flash'); void btn.offsetWidth; btn.classList.add('sim-arrow-flash'); }
   S.simIdx = n; renderSimQ(true);
 }
 
